@@ -1,0 +1,205 @@
+{{define "node_list.html"}}
+{{template "header" .}}
+<div class="layui-layout layui-layout-admin" style="padding-left: 20px;">
+    <div class="layui-row" style="margin-top: 20px;">
+        <blockquote class="layui-elem-quote">
+            注意：手动注册节点,需要先确保节点已启动,否则会注册失败;一般来说,启动节点会自动向注册中心注册,如果启动节点时出现注册失败,则可以进行手动注册
+        </blockquote>
+        <div class="layui-col-xs6">
+            <div class="layui-btn-group">
+                <button class="layui-btn" data-type="tabAdd" id="add">注册节点</button>
+            </div>
+        </div>
+    </div>
+
+    <table class="layui-hide" id="table_list" lay-filter="table_filter">
+    </table>
+
+    <script type="text/html" id="bar">
+        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="unregister">注销节点</a>
+    </script>
+</div>
+
+<script>
+
+    layui.use(['table','form','element'], function(){
+        var table = layui.table;
+        var form = layui.form;
+        var element = layui.element;
+        var error_info = "{{.flash.error}}";
+        if(error_info){
+            layer.msg(error_info,{icon: 2,shade:0.3},function () {
+                window.history.go(-1)
+            })
+            return;
+        }
+        //方法级渲染
+        table.render({
+            elem: '#table_list'
+            ,url: '/getNodes'
+            ,cols: [[
+                {checkbox: true, fixed: true},
+                {field:'id', title: '节点ID', align:'center', sort: true}
+                ,{field:'http_addr', title: 'http连接地址'}
+                ,{field:'tcp_addr',title: 'tcp连接地址'}
+                ,{field:'weight',title: '权重大小',edit:true}
+                ,{field:'join_time',title: '注册时间'}
+                ,{align:'center', title:'操作', toolbar: '#bar'}
+            ]]
+            ,id: 'listReload'
+            ,page: false
+            ,limit:20
+            ,limits: [20,40,80]
+            ,height: "full-130"
+            ,parseData: function(res){ //res 即为原始返回的数据
+              return {
+                "code": res.code, //解析接口状态
+                "msg": res.msg, //解析提示文本
+                "count": res.data.nodes.length, //解析数据长度
+                "data": res.data.nodes //解析数据列表
+              };
+            }
+
+        });
+
+        var $ = layui.$, active = {
+            reload: function(){
+                table.reload('listReload', {
+                    where: {
+                        group_id: $('#group_id').val(),
+                        task_name:$('#task_name').val(),
+                    }
+                });
+            }
+        };
+
+       $("#add").on("click",function() {
+            layer.open({
+                title:'注册节点',
+                type: 2,
+                area: ['660px', '380px'],
+                content: ["/addNode",'no'],
+            });
+        })
+
+         form.on('select(select_group)', function(data){
+             $("#reload").click()
+             form.render('select'); //刷新select选择框渲染
+         });
+
+        //监听工具条
+        table.on('tool(table_filter)', function(obj){
+            var data = obj.data;
+            var task_name ="-"
+            if (obj.event==='unregister'){
+                layer.confirm("确认注销该节点吗?", {icon: 3, title:'提示'}, function(index){
+                    layer.load();
+                    $.ajax({
+                      type: "get",
+                      url: "/unRegisterNode",
+                      data: {addr:data.tcp_addr},
+                      dataType: "json",
+                      success: function(out) {
+                        if (out.code == 0) {
+                            layer.msg("操作成功",{icon: 1,shade:0.3,time:1000},function () {
+                               window.location.reload();  
+                            })
+                        } else {
+                            layer.msg(out.msg,{icon: 5})
+                        }
+                      },
+                      error: function(res){
+                        layer.msg("faied: " + (res.responseJSON.msg || res.statusText),{icon: 5})
+                      }
+                    })
+                    setTimeout(function(){
+                        layer.closeAll('loading');
+                    }, 2000);
+                    layer.close(index);
+                });
+            }else{
+                layer.msg('操作不存在')
+            }
+        });
+        
+        // 监听单元格修改
+        table.on('edit(table_filter)', function(obj){ //注：edit是固定事件名，test是table原始容器的属性 lay-filter="对应的值"
+          $.ajax({
+            type: "post",
+            url: "/editNodeWeight",
+            data: {addr:obj.data.tcp_addr,weight:obj.value},
+            dataType: "json",
+            success: function(out) {
+              if (out.code == 0) {
+                  layer.msg("操作成功",{icon: 1,shade:0.3,time:1000},function () {
+                  })
+              } else {
+                  layer.msg(out.msg,{icon: 5})
+              }
+            },
+            error: function(res){
+              layer.msg("faied: " + (res.responseJSON.msg || res.statusText),{icon: 5})
+            }
+          })
+        });
+        
+        $(".batch").on('click',function (obj) {
+            var action = $(this).attr('data-type');
+            var checkStatus = table.checkStatus('listReload');
+            var data = checkStatus.data;
+            if(data.length<1){
+                layer.msg("请选择操作数据");
+                return;
+            }
+
+            var  msg = "确认启动这些任务吗";
+            if (action=='batchpause'){
+                msg = "确定暂定这些任务吗";
+            }
+
+            layer.confirm(msg, {icon: 3, title:'提示'}, function(index){
+                var ids = "";
+                $.each(data,function (k,v) {
+                    ids += v.id+",";
+                });
+                ids = ids.substr(0,ids.length-1);
+
+                layer.load();
+                $.post('/task/ajax'+action, {"ids":ids}, function (out) {
+                    if (out.status == 0) {
+                        layer.msg("操作成功",{icon: 1,shade:0.3,time:1000},function () {
+                            $('#reload').click();
+                        })
+                    } else {
+                        layer.msg(out.message)
+                        return
+                    }
+                }, "json");
+                setTimeout(function(){
+                    layer.closeAll('loading');
+                }, 2000);
+
+
+                layer.close(index);
+            });
+            return ;
+        })
+    });
+
+</script>
+
+
+{{/*<script>*/}}
+
+    {{/*layui.use(['table','form','element'], function(){*/}}
+        {{/*var table = layui.table;*/}}
+        {{/*var form = layui.form;*/}}
+        {{/*var element = layui.element;*/}}
+
+    {{/*});*/}}
+
+{{/*</script>*/}}
+
+{{template "footer" }}
+{{end}}
+

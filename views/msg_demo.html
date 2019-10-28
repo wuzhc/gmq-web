@@ -1,0 +1,37 @@
+{{define "msg_demo.html"}}
+{{template "header" .}}
+<div class="layui-layout layui-layout-admin" id="container" style="padding-left: 20px;">
+  <blockquote class="layui-elem-quote">
+      说明：可以同时打开各个标签页,体验整个消息投递消费过程
+  </blockquote>
+  <div class="layui-row" style="margin-top: 20px;">
+    <div class="layui-btn-group">
+        <button class="layui-btn" data-type="tabAdd" id="push">推送消息</button>
+    </div>
+    <div class="layui-btn-group">
+        <button class="layui-btn layui-btn-normal" data-type="tabAdd" id="pop">消费消息</button>
+    </div>
+    <div class="layui-btn-group">
+        <button class="layui-btn layui-btn-warm" data-type="tabAdd" id="ack">确认消息</button>
+    </div>
+    <!--<div class="layui-btn-group">
+        <button class="layui-btn layui-btn-danger" data-type="tabAdd" id="dead">消费死信消息</button>
+    </div>-->
+  </div>
+</div>
+<script>
+ layui.use(['layer'], function(){
+    var $ = layui.$;
+    $(".layui-layout-admin").on("click","#push",function(){
+      window.parent.openTab("/msgPush",'消息推送',"msg-push",'fa-plus');
+    }).on("click","#pop",function(){
+      window.parent.openTab("/msgPop",'消息消费',"msg-pop",'fa-plus');      
+    }).on("click","#ack",function(){
+      window.parent.openTab("/msgAck",'消息确认',"msg-ack",'fa-plus');      
+    }).on("click","#dead",function(){
+      window.parent.openTab("/msgDead",'死信消息消费',"msg-dead",'fa-plus');      
+    })
+ });
+</script>
+{{template "footer" }}
+{{end}}

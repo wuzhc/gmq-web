@@ -1,0 +1,193 @@
+{{define "topic_list.html"}}
+{{template "header" .}}
+<div class="layui-layout layui-layout-admin" style="padding-left: 20px;">
+     <div class="layui-row" style="margin-top: 20px;">
+        <blockquote class="layui-elem-quote">
+        <ul>
+        <li>1. 列表只显示被客户端操作的topic</li>
+        <li>2. 若重启gnode节点后,即使topic上有消息,topic也不会显示在列表上,只有当客户端再次操作topic时,才会显示topic相关信息</li>
+        <li>3. 当客户端不需要再操作topic了,可以手动将topic删除,这样可以有效减少资源消耗,目前系统并不会自动删除无操作的topic(之后版本会优化)</li>
+        </ul>
+        </blockquote>
+        
+        <div class="layui-col-xs6">
+            <form class="layui-form" action="" onsubmit="javascript:return false;">
+                <div class="demoTable">
+                    <div class="layui-inline pp-search" style="text-align: left;">
+                        <select name="addr" lay-verify="required" lay-filter="select_group" id="addr" lay-search="">
+                            {{range $k, $v := .data.nodes}}
+                            <option value="{{$v.http_addr}}">{{$v.http_addr}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+                    <button class="layui-btn" data-type="reload" id="reload"><i class="fa fa-search"></i>查询节点</button>
+                </div>
+            </form>
+        </div>
+    </div>
+ 
+    <table class="layui-hide" id="table_list" lay-filter="table_filter">
+    </table>
+
+    <script type="text/html" id="bar">
+        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="autoAck">是|否</a>
+        <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="remove">删除</a>
+    </script>
+</div>
+<script>
+
+    layui.use(['table','form','element'], function(){
+        var table = layui.table;
+        var form = layui.form;
+        var element = layui.element;
+        var error_info = "{{.flash.error}}";
+        if(error_info){
+            layer.msg(error_info,{icon: 2,shade:0.3},function () {
+                window.history.go(-1)
+            })
+            return;
+        }
+        
+       var $ = layui.$, active = {
+          reload: function(){
+              table.reload('listReload', {
+                  where: {
+                      addr: $('#addr').val(),
+                  }
+              });
+          }
+        };
+        
+        //方法级渲染
+        table.render({
+            elem: '#table_list'
+            ,url: '/getTopics'
+            ,where:{'addr': $('#addr').val() }
+            ,cols: [[
+                {checkbox: true, fixed: true, 'hide': true},
+                {field:'id', title: 'ID', align:'center', sort: true, 'hide':true}
+                ,{field:'name', title: 'topic名称'}
+                ,{field:'queue_num', title: '队列消息数量',sort: true}
+                ,{field:'delay_num', title: '延迟消息数量',sort: true}
+                ,{field:'dead_num',title: '死信消息数量',sort: true}
+                ,{field:'wait_ack_num',title: '等待确认数量',sort: true}
+                ,{field:'pop_num',title: '累计消费数量',sort: true}
+                ,{field:'push_num',title: '累计推送数量',sort: true}
+                ,{field:'start_time',title: '开始时间',sort: true}
+                ,{field:'is_auto_ack',title: '自动确认消息'}
+                ,{align:'center', title:'操作', toolbar: '#bar'}
+            ]]
+            ,id: 'listReload'
+            ,page: false
+            ,limit:20
+            ,limits: [20,40,80]
+            ,height: "full-130"
+            ,parseData: function(res){ //res 即为原始返回的数据
+              return {
+                "code": res.code, //解析接口状态
+                "msg": res.msg, //解析提示文本
+                "count": res.data.length, //解析数据长度
+                "data": res.data //解析数据列表
+              };
+            }
+
+        });
+
+       $("#add").on("click",function() {
+            layer.open({
+                title:'添加节点',
+                type: 2,
+                area: ['660px', '380px'],
+                content: ["/addNode",'no'],
+            });
+        })
+
+         form.on('select(select_group)', function(data){
+             $("#reload").click()
+             form.render('select'); //刷新select选择框渲染
+         });
+
+        //监听工具条
+        table.on('tool(table_filter)', function(obj){
+            var data = obj.data;
+            var task_name ="-"
+            if (obj.event==='remove'){
+                layer.confirm("确认要删除该topic吗?", {icon: 3, title:'提示'}, function(index){
+                    layer.load();
+                    $.ajax({
+                      type: "get",
+                      url: "/removeTopic",
+                      data: {topic:data.name,addr:$("#addr").val()},
+                      dataType: "json",
+                      success: function(out) {
+                        if (out.code == 0) {
+                            layer.msg("操作成功",{icon: 1,shade:0.3,time:1000},function () {
+                               window.location.reload();  
+                            })
+                        } else {
+                            layer.msg(out.msg,{icon: 5})
+                        }
+                      },
+                      error: function(res){
+                        layer.msg("faied: " + (res.responseJSON.msg || res.statusText),{icon: 5})
+                      }
+                    })
+                    setTimeout(function(){
+                        layer.closeAll('loading');
+                    }, 2000);
+                    layer.close(index);
+                });
+            }else if(obj.event=='autoAck'){
+              layer.confirm("确认要切换topic的确认消息选项吗?<br><br>设置为true后,消息被消费后会自动从队列删除,不需要要客户端响应ack", {icon: 3, title:'提示'}, function(index){
+                    layer.load();
+                    $.ajax({
+                      type: "get",
+                      url: "/setIsAutoAck",
+                      data: {topic:data.name,addr:$("#addr").val()},
+                      dataType: "json",
+                      success: function(out) {
+                        if (out.code == 0) {
+                            layer.msg("操作成功",{icon: 1,shade:0.3,time:1000},function () {
+                               window.location.reload();  
+                            })
+                        } else {
+                            layer.msg(out.msg,{icon: 5})
+                        }
+                      },
+                      error: function(res){
+                        layer.msg("faied: " + (res.responseJSON.msg || res.statusText),{icon: 5})
+                      }
+                    })
+                    setTimeout(function(){
+                        layer.closeAll('loading');
+                    }, 2000);
+                    layer.close(index);
+                });
+            }else{
+                layer.msg('操作不存在')
+            }
+        });
+  
+        $('.demoTable .layui-btn').on('click', function(){
+            var type = $(this).data('type');
+            active[type] ? active[type].call(this) : '';
+        });
+  
+    });
+
+</script>
+
+
+{{/*<script>*/}}
+
+    {{/*layui.use(['table','form','element'], function(){*/}}
+        {{/*var table = layui.table;*/}}
+        {{/*var form = layui.form;*/}}
+        {{/*var element = layui.element;*/}}
+
+    {{/*});*/}}
+
+{{/*</script>*/}}
+
+{{template "footer" }}
+{{end}}

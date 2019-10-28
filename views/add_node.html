@@ -1,0 +1,87 @@
+{{template "common"}}
+<div class="layui-layout layui-layout-admin" style="padding-left: 40px;margin-top: 20px;">
+
+<form class="layui-form" action="" method="post" >
+    <div class="layui-form-item">
+        <label class="layui-form-label">节点ID</label>
+        <div class="layui-input-inline" style="min-width: 200px;">
+            <input type="text" name="node_id" id="node_id" lay-verify="required" autocomplete="off" placeholder="节点ID" class="layui-input" value="1">
+        </div>
+        <div class="layui-form-mid layui-word-aux">唯一值,范围为1~1024</div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">tcp连接地址</label>
+        <div class="layui-input-inline" style="min-width: 200px;">
+            <input type="text" name="tcp_addr" id="tcp_addr" lay-verify="required" autocomplete="off" placeholder="tcp连接地址" class="layui-input" value="127.0.0.1:9503">
+        </div>
+        <div class="layui-form-mid layui-word-aux">请先启动tcp服务</div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">http连接地址</label>
+        <div class="layui-input-inline" style="min-width: 200px;">
+            <input type="text" name="http_addr" id="http_addr" lay-verify="required" autocomplete="off" placeholder="http连接地址" class="layui-input" value="127.0.0.1:9504">
+        </div>
+        <div class="layui-form-mid layui-word-aux">请先启动http服务</div>
+    </div>
+   <div class="layui-form-item">
+        <label class="layui-form-label">节点权重</label>
+        <div class="layui-input-inline" style="min-width: 200px;">
+            <input type="text" name="weight" id="weight" lay-verify="required" autocomplete="off" placeholder="节点权重" class="layui-input" value="1">
+        </div>
+        <div class="layui-form-mid layui-word-aux">节点权重占比越大,被选中几率越大</div>
+    </div>
+    <input type="hidden" id="id" value="0">
+    <div class="layui-form-item">
+        <div class="layui-input-block">
+            <button class="layui-btn" lay-submit="" lay-filter="sub">立即提交</button>
+            <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+        </div>
+    </div>
+</form>
+</div>
+<script>
+    layui.use(['form','element','layer','jquery'],function(){
+        var form = layui.form; //只有执行了这一步，部分表单元素才会自动修饰成功
+        var $ = layui.jquery;
+        var error_info = "{{.flash.error}}";
+        if(error_info){
+            layer.msg(error_info,{icon: 5},function () {
+                window.parent.layer.closeAll();
+                window.parent.location.reload();
+            })
+            return;
+        }
+        form.on('submit(sub)', function(data){
+              if (data.field.node_id>1024 || data.field.node_id<1) {
+                layer.msg("节点ID范围为1到1024",{icon: 5})
+                return false
+              }          
+                      
+              var form_data = $("form").serialize();
+              $.ajax({
+                type: "post",
+                url: "/registerNode",
+                data: form_data,
+                dataType: "json",
+                success: function(out) {
+                  if (out.code == 0) {
+                      layer.msg("操作成功",{icon: 1,shade:0.5,time:1000},function () {
+                        window.parent.layer.closeAll();
+                        window.parent.location.reload();
+                      })
+                  } else {
+                      layer.msg(out.msg,{icon: 5})
+                  }
+                },
+                error: function(res){
+                layer.msg("faied: " + (res.responseJSON.msg || res.statusText),{icon: 5})
+              }
+              })
+              return false;
+            });
+
+        //但是，如果你的HTML是动态生成的，自动渲染就会失效
+        //因此你需要在相应的地方，执行下述方法来手动渲染，跟这类似的还有 element.init();
+        form.render();
+    });
+</script>

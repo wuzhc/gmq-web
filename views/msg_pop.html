@@ -1,0 +1,102 @@
+{{define "msg_pop.html"}}
+{{template "header" .}}
+<style>
+    .notify {
+        display: none;
+    }
+</style>
+<div class="layui-layout layui-layout-admin" style="padding-left: 40px;margin-top: 20px;">
+    <blockquote class="layui-elem-quote">
+        说明：消费消息会返回消息ID,如果topic未设置自动确认,则可以根据返回的消息ID作为参数发送给gmq以确认消息被消费(打开确认消息标签页)
+    </blockquote>
+    <form class="layui-form" action="" method="post">
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">选择节点</label>
+            <div class="layui-input-inline">
+                <select name="addr" lay-verify="required">
+                    {{range $k, $v := .nodes.nodes}}
+                    <option value="{{$v.http_addr}}">{{$v.http_addr}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+        
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">所属topic</label>
+            <div class="layui-input-inline">
+                <input type="text" name="topic" id="topic" lay-verify="required" autocomplete="off"
+                       placeholder="请输入topic" class="layui-input" value="">
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+        
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200"></label>
+            <div class="layui-input-inline mw400">
+                <button class="layui-btn" lay-submit="" lay-filter="sub">消费消息</button>
+            </div>
+        </div>
+    </form>
+    
+    <div class="layui-row" id="pop-list"></div>
+</div>
+
+
+<script>
+    layui.use(['form', 'element', 'layer', 'jquery'], function () {
+        var form = layui.form; //只有执行了这一步，部分表单元素才会自动修饰成功
+        var $ = layui.jquery;
+        var error_info = "{{.flash.error}}";
+        if (error_info) {
+            layer.msg(error_info, {icon: 2, shade: 0.3}, function () {
+                window.history.go(-1)
+            })
+            return;
+        }
+
+        form.on('submit(sub)', function (data) {
+            var form_data = data.field;
+            var server_arr = new Array();
+            if (form_data.addr.length==0) {
+              layer.msg("请选择节点");
+              return false;
+            }            
+            if (form_data.topic.length==0) {
+              layer.msg("请填写topic");
+              return false;
+            }
+            
+            $.ajax({
+              type: "get",
+              url: "/pop",
+              data: form_data,
+              dataType: "json",
+              success: function(out) {
+                if (out.code == 0) {
+                  var html = '<div class="layui-card">'+
+                    '<div class="layui-card-header">消息ID: '+out.data.id+
+                    '&nbsp;&nbsp;所属topic: '+$("#topic").val()+
+                    '&nbsp;&nbsp;<span class="layui-badge layui-bg-gray">第'+out.data.retry_count+'次被消费</span></div>'+
+                    '<div class="layui-card-body">消息内容: '+ out.data.body+
+                    '</div>'+
+                  '</div>';
+                  $("#pop-list").prepend(html)  
+               } else {
+                    layer.msg(out.msg,{icon: 5})
+                }
+              },
+              error: function(res){
+                layer.msg("faied: " + (res.responseJSON.msg || res.statusText),{icon: 5})
+              }
+            })
+            return false;
+        });
+
+        //但是，如果你的HTML是动态生成的，自动渲染就会失效
+        //因此你需要在相应的地方，执行下述方法来手动渲染，跟这类似的还有 element.init();
+        form.render();
+    });
+</script>
+{{template "footer" }}
+{{end}}

@@ -1,0 +1,117 @@
+{{define "msg_push.html"}}
+{{template "header" .}}
+<style>
+    .notify {
+        display: none;
+    }
+</style>
+<div class="layui-layout layui-layout-admin" style="padding-left: 40px;margin-top: 20px;">
+    <blockquote class="layui-elem-quote">
+        说明：消息推送成功后,可在打开消费页面,选择节点和消息所属的topic,对topic进行拉取消息
+    </blockquote>
+    <form class="layui-form" action="" method="post">
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">选择节点</label>
+            <div class="layui-input-inline">
+                <select name="addr" lay-verify="required">
+                    {{range $k, $v := .data.nodes}}
+                    <option value="{{$v.http_addr}}">{{$v.http_addr}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+        
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">所属topic</label>
+            <div class="layui-input-inline">
+                <input type="text" name="topic" id="topic" lay-verify="required" autocomplete="off"
+                       placeholder="请输入topic" class="layui-input" value="">
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+        
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">延迟时间</label>
+            <div class="layui-input-inline">
+                <input type="text" name="delay" id="delay" lay-verify="required" autocomplete="off"
+                       placeholder="单位：秒，默认0" class="layui-input" value="0">
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">消息内容</label>
+            <div class="layui-input-inline mw400">
+                <textarea name="content" id="content" rows="2" placeholder="请输入内容"
+                          class="layui-textarea"></textarea>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200"></label>
+            <div class="layui-input-inline mw400">
+                <button class="layui-btn" lay-submit="" lay-filter="sub">确定推送</button>
+                <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+            </div>
+        </div>
+    </form>
+</div>
+<script>
+    layui.use(['form', 'element', 'layer', 'jquery'], function () {
+        var form = layui.form; //只有执行了这一步，部分表单元素才会自动修饰成功
+        var $ = layui.jquery;
+        var error_info = "{{.flash.error}}";
+        if (error_info) {
+            layer.msg(error_info, {icon: 2, shade: 0.3}, function () {
+                window.history.go(-1)
+            })
+            return;
+        }
+
+        form.on('submit(sub)', function (data) {
+            var form_data = data.field;
+            var server_arr = new Array();
+            if (form_data.addr.length==0) {
+              layer.msg("请选择节点");
+              return false;
+            }
+            if (form_data.topic.length==0) {
+              layer.msg("请填写topic");
+              return false;
+            }
+            if (form_data.content.length==0) {
+              layer.msg("请填写消息内容");
+              return false;
+            }
+          
+            $.ajax({
+              type: "post",
+              url: "/push",
+              data: form_data,
+              dataType: "json",
+              success: function(out) {
+                if (out.code == 0) {
+                    if (out.data.msgId) {                      
+                      layer.alert("消息ID为:"+out.data.msgId,{icon:1,title:"推送成功"})
+                    } else {
+                      layer.msg("推送失败")
+                    }
+                } else {
+                    layer.msg(out.msg,{icon: 5})
+                }
+              },
+              error: function(res){
+                layer.msg("faied: " + (res.responseJSON.msg || res.statusText),{icon: 5})
+              }
+            })
+            return false;
+        });
+
+        //但是，如果你的HTML是动态生成的，自动渲染就会失效
+        //因此你需要在相应的地方，执行下述方法来手动渲染，跟这类似的还有 element.init();
+        form.render();
+    });
+</script>
+{{template "footer" }}
+{{end}}
