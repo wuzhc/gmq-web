@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	API_GMQ_NODE     = "http://127.0.0.1:9504"
 	API_GMQ_REGISTER = "http://127.0.0.1:9595"
 )
 
@@ -67,7 +66,6 @@ func run(ctx context.Context, cancel context.CancelFunc) {
 	// 主题topic管理
 	r.GET("/topicList", topicList)
 	r.GET("/removeTopic", removeTopic)
-	r.GET("/getTopic", getTopic)
 	r.GET("/getTopics", getTopics)
 	r.GET("/setIsAutoAck", setIsAutoAck)
 
@@ -152,19 +150,6 @@ func topicList(c *gin.Context) {
 		"title": "topic管理",
 		"data":  data,
 	})
-}
-
-// 获取topic
-func getTopic(c *gin.Context) {
-	topic := c.Query("topic")
-	if len(topic) == 0 {
-		c.JSON(http.StatusBadRequest, rspErr("topic is empty"))
-		return
-	}
-
-	v := url.Values{}
-	v.Set("topic", topic)
-	gmqApi("get", API_GMQ_NODE+"/getTopic", v, c)
 }
 
 // 获取正在运行的topic统计信息
@@ -305,18 +290,9 @@ func msgPop(c *gin.Context) {
 		return
 	}
 
-	topics, err := _getTopics()
-	if err != nil {
-		c.HTML(http.StatusBadGateway, "error.html", gin.H{
-			"error": err,
-		})
-		return
-	}
-
 	c.HTML(http.StatusOK, "msg_pop.html", gin.H{
-		"title":  "消息消费",
-		"nodes":  nodes,
-		"topics": topics,
+		"title": "消息消费",
+		"nodes": nodes,
 	})
 }
 
@@ -433,21 +409,6 @@ func mpush(c *gin.Context) {
 	c.JSON(http.StatusOK, "unsport")
 }
 
-// 设置topic信息
-func set(c *gin.Context) {
-	topic := c.Query("topic")
-	isAutoAck := c.DefaultQuery("isAutoAck", "0")
-	if len(topic) == 0 {
-		c.JSON(http.StatusBadRequest, "topic is empty")
-		return
-	}
-
-	v := url.Values{}
-	v.Set("topic", topic)
-	v.Set("isAutoAck", isAutoAck)
-	gmqApi("get", API_GMQ_NODE+"/set", v, c)
-}
-
 func gmqApi(method string, addr string, data url.Values, c *gin.Context) {
 	client := &http.Client{}
 	method = strings.ToUpper(method)
@@ -504,27 +465,6 @@ func gmqApi(method string, addr string, data url.Values, c *gin.Context) {
 // 获取节点
 func _getNodes() (interface{}, error) {
 	resp, err := http.Get(API_GMQ_REGISTER + "/getNodes")
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var data respStruct
-	if err := json.Unmarshal(body, &data); err != nil {
-		return nil, err
-	}
-
-	return data.Data, nil
-}
-
-// 获取topic
-func _getTopics() (interface{}, error) {
-	resp, err := http.Get(API_GMQ_NODE + "/getAllTopicStat")
 	if err != nil {
 		return nil, err
 	}
