@@ -35,10 +35,12 @@ docker run --name gmq-web -p 8080:8080 wuzhc/gmq-image:v1 gweb -web_addr="127.0.
 ## 访问
 游览器输入地址:`http://127.0.0.0:8080`
 ### 节点列表
-![节点列表](https://github.com/wuzhc/zcnote/blob/master/images/gmq/gmq-web%E8%8A%82%E7%82%B9%E5%88%97%E8%A1%A8.png)
+![节点列表](https://gitee.com/wuzhc123/zcnote/raw/master/images/gmq/gmq-web%E8%8A%82%E7%82%B9%E5%88%97%E8%A1%A8.png)
 ### topic列表
-![topic列表](https://gitee.com/wuzhc123/zcnote/blob/master/images/gmq/gmq-web%E4%B8%BB%E9%A2%98%E5%88%97%E8%A1%A8.png)
+![topic列表](https://gitee.com/wuzhc123/zcnote/raw/master/images/gmq/gmq-web%E4%B8%BB%E9%A2%98%E5%88%97%E8%A1%A8.png)
 ### 消息处理
-![推送](https://github.com/wuzhc/zcnote/blob/master/images/gmq/gmq-web%E6%B6%88%E6%81%AF%E6%8E%A8%E9%80%81.png)
-![消费](https://github.com/wuzhc/zcnote/blob/master/images/gmq/gmq-web%E6%B6%88%E6%81%AF%E6%B6%88%E8%B4%B9.png)
-![确认](https://github.com/wuzhc/zcnote/blob/master/images/gmq/gmq-web%E6%B6%88%E6%81%AF%E7%A1%AE%E8%AE%A4.png)
+![推送](https://gitee.com/wuzhc123/zcnote/raw/master/images/gmq/gmq-web%E6%B6%88%E6%81%AF%E6%8E%A8%E9%80%81.png)
+![消费](https://gitee.com/wuzhc123/zcnote/raw/master/images/gmq/gmq-web%E6%B6%88%E6%81%AF%E6%B6%88%E8%B4%B9.png)
+![确认](https://gitee.com/wuzhc123/zcnote/raw/master/images/gmq/gmq-web%E6%B6%88%E6%81%AF%E7%A1%AE%E8%AE%A4.png)
+
+后台模板来自https://github.com/george518/PPGo_Job
