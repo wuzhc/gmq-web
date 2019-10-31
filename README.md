@@ -33,7 +33,7 @@ docker run --name gmq-web -p 8080:8080 wuzhc/gmq-image:v1 gweb -web_addr="127.0.
 ```
 
 ## 访问
-游览器输入地址:`http://127.0.0.0:8080`
+游览器输入地址:`http://127.0.0.1:8080`
 ### 节点列表
 ![节点列表](https://gitee.com/wuzhc123/zcnote/raw/master/images/gmq/gmq-web%E8%8A%82%E7%82%B9%E5%88%97%E8%A1%A8.png)
 ### topic列表
