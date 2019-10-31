@@ -1,0 +1,4 @@
+package: github.com/wuzhc/gmq-web
+import:
+- package: github.com/gin-gonic/gin
+  version: ^1.4.0

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,10 +12,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-)
-
-const (
-	API_GMQ_REGISTER = "http://127.0.0.1:9595"
 )
 
 type topicData struct {
@@ -38,7 +35,14 @@ type msg struct {
 	Delay int    `json:"delay"`
 }
 
+var registerAddr string
+var webAddr string
+
 func main() {
+	flag.StringVar(&registerAddr, "register_addr", "http://127.0.0.1:9595", "register address")
+	flag.StringVar(&webAddr, "web_addr", ":8080", "the address of gmq-web")
+	flag.Parse()
+
 	var ctx context.Context
 	ctx = context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -82,7 +86,7 @@ func run(ctx context.Context, cancel context.CancelFunc) {
 	// r.GET("/mpush", mpush)
 
 	serv := &http.Server{
-		Addr:    ":8585",
+		Addr:    webAddr,
 		Handler: r,
 	}
 
@@ -200,7 +204,7 @@ func setIsAutoAck(c *gin.Context) {
 
 // 获取注册中心所有注册节点
 func getNodes(c *gin.Context) {
-	gmqApi("get", API_GMQ_REGISTER+"/getNodes", nil, c)
+	gmqApi("get", registerAddr+"/getNodes", nil, c)
 }
 
 // 注销节点
@@ -211,7 +215,7 @@ func unRegisterNode(c *gin.Context) {
 		return
 	}
 
-	gmqApi("get", API_GMQ_REGISTER+"/unregister?tcp_addr="+addr, nil, c)
+	gmqApi("get", registerAddr+"/unregister?tcp_addr="+addr, nil, c)
 }
 
 // 注册节点
@@ -238,7 +242,7 @@ func registerNode(c *gin.Context) {
 		return
 	}
 
-	gmqApi("get", API_GMQ_REGISTER+"/register?node_id="+id+"&tcp_addr="+tcpAddr+"&http_addr="+httpAddr+"&weight="+weight, nil, c)
+	gmqApi("get", registerAddr+"/register?node_id="+id+"&tcp_addr="+tcpAddr+"&http_addr="+httpAddr+"&weight="+weight, nil, c)
 }
 
 // 修改节点权重
@@ -254,7 +258,7 @@ func editNodeWeight(c *gin.Context) {
 		return
 	}
 
-	gmqApi("get", API_GMQ_REGISTER+"/editWeight?tcp_addr="+tcpAddr+"&weight="+weight, nil, c)
+	gmqApi("get", registerAddr+"/editWeight?tcp_addr="+tcpAddr+"&weight="+weight, nil, c)
 }
 
 // 消息测试
@@ -464,7 +468,7 @@ func gmqApi(method string, addr string, data url.Values, c *gin.Context) {
 
 // 获取节点
 func _getNodes() (interface{}, error) {
-	resp, err := http.Get(API_GMQ_REGISTER + "/getNodes")
+	resp, err := http.Get(registerAddr + "/getNodes")
 	if err != nil {
 		return nil, err
 	}
