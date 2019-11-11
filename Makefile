@@ -4,15 +4,12 @@ ifeq (${GOOS},windows)
 endif
 
 .PHONY: all
-all: vendor clean build install
+all: clean build install
 
-.PHONY: vendor clean build install
+.PHONY: clean build install
 
 build: 
 	go build -o ./build/gweb .
-
-vendor: glide.lock glide.yaml
-	glide install 
 
 clean:
 	rm -rf ./build
