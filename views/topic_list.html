@@ -102,11 +102,6 @@
             });
         })
 
-         form.on('select(select_group)', function(data){
-             $("#reload").click()
-             form.render('select'); //刷新select选择框渲染
-         });
-
         //监听工具条
         table.on('tool(table_filter)', function(obj){
             var data = obj.data;
