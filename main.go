@@ -4,15 +4,26 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/etcd-io/etcd/clientv3"
 	"github.com/gin-gonic/gin"
 )
+
+type node struct {
+	Id       string `json:"node_id"`
+	TcpAddr  string `json:"tcp_addr"`
+	HttpAddr string `json:"http_addr"`
+	Weight   string `json:"weight"`
+	JoinTime string `json:"join_time"`
+}
 
 type topicData struct {
 	Name      string `json:"name"`
@@ -30,23 +41,48 @@ type respStruct struct {
 }
 
 type msg struct {
-	Topic string `json:"topic"`
-	Body  string `json:"body"`
-	Delay int    `json:"delay"`
+	Topic    string `json:"topic"`
+	Body     string `json:"body"`
+	Delay    int    `json:"delay"`
+	routeKey string `json:"route_key"`
 }
 
-var registerAddr string
 var webAddr string
+var etcdCli *clientv3.Client
+var registerAddr string
 
 func main() {
-	flag.StringVar(&registerAddr, "register_addr", "http://127.0.0.1:9595", "register address")
+	// parse command options
+	var endpoints string
+	flag.StringVar(&endpoints, "ectd_endpoints", "127.0.0.1:2379", "etcd endpoints")
 	flag.StringVar(&webAddr, "web_addr", ":8080", "the address of gmq-web")
 	flag.Parse()
 
+	// connect to etcd
+	ectdEndpoints := strings.Split(endpoints, ",")
+	err := connectToEtcd(ectdEndpoints)
+	if err != nil {
+		log.Fatalf("connect to etcd failed, %s", err)
+	}
+
+	// run gin
 	var ctx context.Context
 	ctx = context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	run(ctx, cancel)
+}
+
+func connectToEtcd(endpoints []string) error {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: 3 * time.Second,
+	})
+	if err != nil {
+		return fmt.Errorf("can't create etcd client.")
+	}
+
+	etcdCli = cli
+	return nil
 }
 
 func run(ctx context.Context, cancel context.CancelFunc) {
@@ -75,10 +111,7 @@ func run(ctx context.Context, cancel context.CancelFunc) {
 
 	// 消息管理
 	r.GET("/msgDemo", msgDemo)
-	r.GET("/msgPush", msgPush)
-	r.GET("/msgPop", msgPop)
-	r.GET("/msgAck", msgAck)
-	r.GET("/msgDead", msgDead)
+	r.GET("/declare", declareQueue)
 	r.POST("/push", push)
 	r.GET("/pop", pop)
 	r.GET("/ack", ack)
@@ -142,7 +175,7 @@ func addNode(c *gin.Context) {
 
 // topic列表
 func topicList(c *gin.Context) {
-	data, err := _getNodes()
+	nodes, err := _getNodes()
 	if err != nil {
 		c.HTML(http.StatusBadGateway, "error.html", gin.H{
 			"error": err,
@@ -152,7 +185,7 @@ func topicList(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "topic_list.html", gin.H{
 		"title": "topic管理",
-		"data":  data,
+		"nodes": nodes,
 	})
 }
 
@@ -204,7 +237,15 @@ func setIsAutoAck(c *gin.Context) {
 
 // 获取注册中心所有注册节点
 func getNodes(c *gin.Context) {
-	gmqApi("get", registerAddr+"/getNodes", nil, c)
+	nodes, err := _getNodes()
+	if err != nil {
+		c.JSON(http.StatusBadGateway, err)
+		return
+	}
+
+	var rspData respStruct
+	rspData.Data = nodes
+	c.JSON(http.StatusOK, rspData)
 }
 
 // 注销节点
@@ -215,7 +256,33 @@ func unRegisterNode(c *gin.Context) {
 		return
 	}
 
-	gmqApi("get", registerAddr+"/unregister?tcp_addr="+addr, nil, c)
+	nodes, err := _getNodes()
+	if err != nil {
+		c.JSON(http.StatusBadGateway, rspErr(err.Error()))
+		return
+	}
+
+	var nodeKey string
+	for k, n := range nodes {
+		if n.TcpAddr == addr {
+			nodeKey = k
+			break
+		}
+	}
+	if len(nodeKey) == 0 {
+		c.JSON(http.StatusBadGateway, rspErr("addr can't match node."))
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	_, err := etcdCli.Get(ctx, nodeKey)
+	cancel()
+	if err != nil {
+		c.JSON(http.StatusBadGateway, rspErr(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, rspSuccess("success"))
 }
 
 // 注册节点
@@ -263,71 +330,16 @@ func editNodeWeight(c *gin.Context) {
 
 // 消息测试
 func msgDemo(c *gin.Context) {
+	nodes, err := _getNodes()
+	if err != nil {
+		c.HTML(http.StatusBadGateway, "error.html", gin.H{
+			"error": err,
+		})
+		return
+	}
+
 	c.HTML(http.StatusOK, "msg_demo.html", gin.H{
 		"title": "消息测试",
-	})
-}
-
-// 消息推送
-func msgPush(c *gin.Context) {
-	data, err := _getNodes()
-	if err != nil {
-		c.HTML(http.StatusBadGateway, "error.html", gin.H{
-			"error": err,
-		})
-		return
-	}
-
-	c.HTML(http.StatusOK, "msg_push.html", gin.H{
-		"title": "消息推送",
-		"data":  data,
-	})
-}
-
-// 消息消费
-func msgPop(c *gin.Context) {
-	nodes, err := _getNodes()
-	if err != nil {
-		c.HTML(http.StatusBadGateway, "error.html", gin.H{
-			"error": err,
-		})
-		return
-	}
-
-	c.HTML(http.StatusOK, "msg_pop.html", gin.H{
-		"title": "消息消费",
-		"nodes": nodes,
-	})
-}
-
-// 消息确认
-func msgAck(c *gin.Context) {
-	nodes, err := _getNodes()
-	if err != nil {
-		c.HTML(http.StatusBadGateway, "error.html", gin.H{
-			"error": err,
-		})
-		return
-	}
-
-	c.HTML(http.StatusOK, "msg_ack.html", gin.H{
-		"title": "消息确认",
-		"nodes": nodes,
-	})
-}
-
-// 死信消息确认
-func msgDead(c *gin.Context) {
-	nodes, err := _getNodes()
-	if err != nil {
-		c.HTML(http.StatusBadGateway, "error.html", gin.H{
-			"error": err,
-		})
-		return
-	}
-
-	c.HTML(http.StatusOK, "msg_dead.html", gin.H{
-		"title": "消息确认",
 		"nodes": nodes,
 	})
 }
@@ -337,6 +349,7 @@ func push(c *gin.Context) {
 	addr := c.PostForm("addr")
 	topic := c.PostForm("topic")
 	content := c.PostForm("content")
+	routeKey := c.PostForm("routeKey")
 	delay := c.DefaultPostForm("delay", "0")
 	if len(addr) == 0 {
 		c.JSON(http.StatusBadRequest, "please select a node.")
@@ -350,11 +363,16 @@ func push(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, "content is empty")
 		return
 	}
+	if len(routeKey) == 0 {
+		c.JSON(http.StatusBadRequest, "routeKey is empty")
+		return
+	}
 
 	m := msg{}
 	m.Topic = topic
 	m.Body = content
 	m.Delay, _ = strconv.Atoi(delay)
+	m.routeKey = routeKey
 	data, err := json.Marshal(m)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, "encode message failed.")
@@ -367,9 +385,11 @@ func push(c *gin.Context) {
 }
 
 // 消费消息
+// curl "http://127.0.0.1:9504/pop?topic=xxx&bindKey=xxx"
 func pop(c *gin.Context) {
 	topic := c.Query("topic")
 	addr := c.Query("addr")
+	bindKey := c.Query("bindKey")
 	if len(topic) == 0 {
 		c.JSON(http.StatusBadRequest, "topic is empty")
 		return
@@ -378,10 +398,40 @@ func pop(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, "please select a node.")
 		return
 	}
+	if len(bindKey) == 0 {
+		c.JSON(http.StatusBadRequest, "bindKey is empty.")
+		return
+	}
 
 	v := url.Values{}
 	v.Set("topic", topic)
+	v.Set("bindKey", bindKey)
 	gmqApi("get", "http://"+addr+"/pop", v, c)
+}
+
+// 声明队列
+// curl "http://127.0.0.1:9504/declareQueue?topic=xxx&bindKey=kkk"
+func declareQueue(c *gin.Context) {
+	addr := c.Query("addr")
+	bindKey := c.Query("bindKey")
+	topic := c.Query("topic")
+	if len(addr) == 0 {
+		c.JSON(http.StatusBadRequest, "addr is empty")
+		return
+	}
+	if len(bindKey) == 0 {
+		c.JSON(http.StatusBadRequest, "bindKey is empty")
+		return
+	}
+	if len(topic) == 0 {
+		c.JSON(http.StatusBadRequest, "topic is empty")
+		return
+	}
+
+	v := url.Values{}
+	v.Set("topic", topic)
+	v.Set("bindKey", bindKey)
+	gmqApi("get", "http://"+addr+"/declareQueue", v, c)
 }
 
 // 确认消息
@@ -389,6 +439,7 @@ func ack(c *gin.Context) {
 	addr := c.Query("addr")
 	msgId := c.Query("msgId")
 	topic := c.Query("topic")
+	bindKey := c.Query("bindKey")
 	if len(addr) == 0 {
 		c.JSON(http.StatusBadRequest, "addr is empty")
 		return
@@ -401,10 +452,15 @@ func ack(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, "topic is empty")
 		return
 	}
+	if len(bindKey) == 0 {
+		c.JSON(http.StatusBadRequest, "bindKey is empty")
+		return
+	}
 
 	v := url.Values{}
 	v.Set("topic", topic)
 	v.Set("msgId", msgId)
+	v.Set("bindKey", bindKey)
 	gmqApi("get", "http://"+addr+"/ack", v, c)
 }
 
@@ -467,24 +523,25 @@ func gmqApi(method string, addr string, data url.Values, c *gin.Context) {
 }
 
 // 获取节点
-func _getNodes() (interface{}, error) {
-	resp, err := http.Get(registerAddr + "/getNodes")
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
+func _getNodes() (map[string]node, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	resp, err := etcdCli.Get(ctx, "/gmq/node", clientv3.WithPrefix())
+	cancel()
 	if err != nil {
 		return nil, err
 	}
 
-	var data respStruct
-	if err := json.Unmarshal(body, &data); err != nil {
-		return nil, err
+	var n node
+	nodes := make(map[string]node)
+	for _, ev := range resp.Kvs {
+		fmt.Printf("%s => %s\n", ev.Key, ev.Value)
+		if err := json.Unmarshal(ev.Value, &n); err != nil {
+			return nil, err
+		}
+		nodes[string(ev.Key)] = n
 	}
 
-	return data.Data, nil
+	return nodes, nil
 }
 
 func rspErr(msg interface{}) gin.H {

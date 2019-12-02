@@ -5,6 +5,56 @@
         display: none;
     }
 </style>
+
+
+<!--声明队列-->
+<div class="layui-layout layui-layout-admin" style="padding-left: 40px;margin-top: 20px;">
+    <blockquote class="layui-elem-quote">
+        说明：声明队列
+    </blockquote>
+    <form class="layui-form" action="" method="post">
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">消息所在节点</label>
+            <div class="layui-input-inline">
+                <select name="addr" lay-verify="required">
+                    {{range $k, $v := .nodes}}
+                    <option value="{{$v.HttpAddr}}">{{$v.HttpAddr}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">消息所属topic</label>
+            <div class="layui-input-inline">
+                <input type="text" name="topic" id="topic4" lay-verify="required" autocomplete="off"
+                       placeholder="" class="layui-input" value="">
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">绑定键</label>
+            <div class="layui-input-inline">
+                <input type="text" name="bindKey" id="bindKey" lay-verify="required" autocomplete="off"
+                       placeholder="" class="layui-input" value="">
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200"></label>
+            <div class="layui-input-inline mw400">
+                <button class="layui-btn" lay-submit="" lay-filter="sub-queue">声明队列</button>
+            </div>
+        </div>
+    </form>
+</div>
+<!--声明队列-->
+
+
+<!--推送消息-->
 <div class="layui-layout layui-layout-admin" style="padding-left: 40px;margin-top: 20px;">
     <blockquote class="layui-elem-quote">
         说明：消息推送成功后,可在打开消费页面,选择节点和消息所属的topic,对topic进行拉取消息
@@ -14,14 +64,14 @@
             <label class="layui-form-label mw200">选择节点</label>
             <div class="layui-input-inline">
                 <select name="addr" lay-verify="required">
-                    {{range $k, $v := .data.nodes}}
-                    <option value="{{$v.http_addr}}">{{$v.http_addr}}</option>
+                    {{range $k, $v := .nodes}}
+                    <option value="{{$v.HttpAddr}}">{{$v.HttpAddr}}</option>
                     {{end}}
                 </select>
             </div>
             <div class="layui-form-mid layui-word-aux"></div>
         </div>
-        
+
         <div class="layui-form-item">
             <label class="layui-form-label mw200">所属topic</label>
             <div class="layui-input-inline">
@@ -30,12 +80,21 @@
             </div>
             <div class="layui-form-mid layui-word-aux"></div>
         </div>
-        
+
         <div class="layui-form-item">
             <label class="layui-form-label mw200">延迟时间</label>
             <div class="layui-input-inline">
                 <input type="text" name="delay" id="delay" lay-verify="required" autocomplete="off"
                        placeholder="单位：秒，默认0" class="layui-input" value="0">
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">路由键</label>
+            <div class="layui-input-inline">
+                <input type="text" name="routeKey" id="routeKey" lay-verify="required" autocomplete="off"
+                       placeholder="请输入路由键" class="layui-input" value="">
             </div>
             <div class="layui-form-mid layui-word-aux"></div>
         </div>
@@ -51,12 +110,119 @@
         <div class="layui-form-item">
             <label class="layui-form-label mw200"></label>
             <div class="layui-input-inline mw400">
-                <button class="layui-btn" lay-submit="" lay-filter="sub">确定推送</button>
+                <button class="layui-btn" lay-submit="" lay-filter="sub-push">确定推送</button>
                 <button type="reset" class="layui-btn layui-btn-primary">重置</button>
             </div>
         </div>
     </form>
 </div>
+<!--推送消息-->
+
+
+<!--消费消息-->
+<div class="layui-layout layui-layout-admin" style="padding-left: 40px;margin-top: 20px;">
+    <blockquote class="layui-elem-quote">
+        说明：消费消息会返回消息ID,如果topic未设置自动确认,则可以根据返回的消息ID作为参数发送给gmq以确认消息被消费(打开确认消息标签页)
+    </blockquote>
+    <form class="layui-form" action="" method="post">
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">选择节点</label>
+            <div class="layui-input-inline">
+                <select name="addr" lay-verify="required">
+                    {{range $k, $v := .nodes}}
+                    <option value="{{$v.HttpAddr}}">{{$v.HttpAddr}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">所属topic</label>
+            <div class="layui-input-inline">
+                <input type="text" name="topic" id="topic2" lay-verify="required" autocomplete="off"
+                       placeholder="请输入topic" class="layui-input" value="">
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">绑定键</label>
+            <div class="layui-input-inline">
+                <input type="text" name="bindKey" id="bindKey3" lay-verify="required" autocomplete="off"
+                       placeholder="" class="layui-input" value="">
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200"></label>
+            <div class="layui-input-inline mw400">
+                <button class="layui-btn" lay-submit="" lay-filter="sub-pop">消费消息</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="layui-row" id="pop-list"></div>
+</div>
+<!--消费消息-->
+
+
+<!--确认消息-->
+<div class="layui-layout layui-layout-admin" style="padding-left: 40px;margin-top: 20px;">
+    <blockquote class="layui-elem-quote">
+        说明：确认消息
+    </blockquote>
+    <form class="layui-form" action="" method="post">
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">消息所在节点</label>
+            <div class="layui-input-inline">
+                <select name="addr" lay-verify="required">
+                    {{range $k, $v := .nodes}}
+                    <option value="{{$v.HttpAddr}}">{{$v.HttpAddr}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">消息所属topic</label>
+            <div class="layui-input-inline">
+                <input type="text" name="topic" id="topic3" lay-verify="required" autocomplete="off"
+                       placeholder="" class="layui-input" value="">
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">消息ID</label>
+            <div class="layui-input-inline">
+                <input type="text" name="msgId" id="msgId" lay-verify="required" autocomplete="off"
+                       placeholder="" class="layui-input" value="">
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200">绑定键</label>
+            <div class="layui-input-inline">
+                <input type="text" name="bindKey" id="bindKey2" lay-verify="required" autocomplete="off"
+                       placeholder="" class="layui-input" value="">
+            </div>
+            <div class="layui-form-mid layui-word-aux"></div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label mw200"></label>
+            <div class="layui-input-inline mw400">
+                <button class="layui-btn" lay-submit="" lay-filter="sub-ack">确认消费</button>
+            </div>
+        </div>
+    </form>
+</div>
+<!--确认消息-->
+
 <script>
     layui.use(['form', 'element', 'layer', 'jquery'], function () {
         var form = layui.form; //只有执行了这一步，部分表单元素才会自动修饰成功
@@ -69,41 +235,161 @@
             return;
         }
 
-        form.on('submit(sub)', function (data) {
+        form.on('submit(sub-queue)', function (data) {
             var form_data = data.field;
             var server_arr = new Array();
-            if (form_data.addr.length==0) {
-              layer.msg("请选择节点");
-              return false;
+            if (form_data.addr.length == 0) {
+                layer.msg("请选择节点");
+                return false;
             }
-            if (form_data.topic.length==0) {
-              layer.msg("请填写topic");
-              return false;
+            if (form_data.topic.length == 0) {
+                layer.msg("请填写topic");
+                return false;
             }
-            if (form_data.content.length==0) {
-              layer.msg("请填写消息内容");
-              return false;
+            if (form_data.bindKey.length == 0) {
+                layer.msg("请填写绑定键");
+                return false;
             }
-          
+
             $.ajax({
-              type: "post",
-              url: "/push",
-              data: form_data,
-              dataType: "json",
-              success: function(out) {
-                if (out.code == 0) {
-                    if (out.data.msgId) {                      
-                      layer.alert("消息ID为:"+out.data.msgId,{icon:1,title:"推送成功"})
+                type: "get",
+                url: "/declare",
+                data: form_data,
+                dataType: "json",
+                success: function (out) {
+                    if (out.code == 0) {
+                        layer.msg(out.msg, {icon: 1})
                     } else {
-                      layer.msg("推送失败")
+                        layer.msg(out.msg, {icon: 5})
                     }
-                } else {
-                    layer.msg(out.msg,{icon: 5})
+                },
+                error: function (res) {
+                    layer.msg("faied: " + (res.responseJSON.msg || res.statusText), {icon: 5})
                 }
-              },
-              error: function(res){
-                layer.msg("faied: " + (res.responseJSON.msg || res.statusText),{icon: 5})
-              }
+            })
+            return false;
+        });
+
+        form.on('submit(sub-push)', function (data) {
+            var form_data = data.field;
+            var server_arr = new Array();
+            if (form_data.addr.length == 0) {
+                layer.msg("请选择节点");
+                return false;
+            }
+            if (form_data.topic.length == 0) {
+                layer.msg("请填写topic");
+                return false;
+            }
+            if (form_data.content.length == 0) {
+                layer.msg("请填写消息内容");
+                return false;
+            }
+            if (form_data.routeKey.length == 0) {
+                layer.msg("请填写路由键");
+                return false;
+            }
+
+            $.ajax({
+                type: "post",
+                url: "/push",
+                data: form_data,
+                dataType: "json",
+                success: function (out) {
+                    if (out.code == 0) {
+                        if (out.data.msgId) {
+                            layer.alert("消息ID为:" + out.data.msgId, {icon: 1, title: "推送成功"})
+                        } else {
+                            layer.msg("推送失败")
+                        }
+                    } else {
+                        layer.msg(out.msg, {icon: 5})
+                    }
+                },
+                error: function (res) {
+                    layer.msg("faied: " + (res.responseJSON.msg || res.statusText), {icon: 5})
+                }
+            })
+            return false;
+        });
+
+        form.on('submit(sub-pop)', function (data) {
+            var form_data = data.field;
+            var server_arr = new Array();
+            if (form_data.addr.length == 0) {
+                layer.msg("请选择节点");
+                return false;
+            }
+            if (form_data.topic.length == 0) {
+                layer.msg("请填写topic");
+                return false;
+            }
+            if (form_data.bindKey.length == 0) {
+                layer.msg("请填写绑定键");
+                return false;
+            }
+
+            $.ajax({
+                type: "get",
+                url: "/pop",
+                data: form_data,
+                dataType: "json",
+                success: function (out) {
+                    if (out.code == 0) {
+                        var html = '<div class="layui-card">' +
+                            '<div class="layui-card-header">消息ID: ' + out.data.id +
+                            '&nbsp;&nbsp;所属topic: ' + $("#topic").val() +
+                            '&nbsp;&nbsp;<span class="layui-badge layui-bg-gray">第' + out.data.retry_count + '次被消费</span></div>' +
+                            '<div class="layui-card-body">消息内容: ' + out.data.body +
+                            '</div>' +
+                            '</div>';
+                        $("#pop-list").prepend(html)
+                    } else {
+                        layer.msg(out.msg, {icon: 5})
+                    }
+                },
+                error: function (res) {
+                    layer.msg("faied: " + (res.responseJSON.msg || res.statusText), {icon: 5})
+                }
+            })
+            return false;
+        });
+
+        form.on('submit(sub-ack)', function (data) {
+            var form_data = data.field;
+            var server_arr = new Array();
+            if (form_data.addr.length == 0) {
+                layer.msg("请选择节点");
+                return false;
+            }
+            if (form_data.topic.length == 0) {
+                layer.msg("请填写topic");
+                return false;
+            }
+            if (form_data.msgId.length == 0) {
+                layer.msg("请填写消息ID");
+                return false;
+            }
+            if (form_data.bindKey.length == 0) {
+                layer.msg("请填写绑定键");
+                return false;
+            }
+
+            $.ajax({
+                type: "get",
+                url: "/ack",
+                data: form_data,
+                dataType: "json",
+                success: function (out) {
+                    if (out.code == 0) {
+                        layer.msg(out.msg, {icon: 1})
+                    } else {
+                        layer.msg(out.msg, {icon: 5})
+                    }
+                },
+                error: function (res) {
+                    layer.msg("faied: " + (res.responseJSON.msg || res.statusText), {icon: 5})
+                }
             })
             return false;
         });

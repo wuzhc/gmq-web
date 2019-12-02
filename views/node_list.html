@@ -7,7 +7,7 @@
         </blockquote>
         <div class="layui-col-xs6">
             <div class="layui-btn-group">
-                <button class="layui-btn" data-type="tabAdd" id="add">注册节点</button>
+                <!--<button class="layui-btn" data-type="tabAdd" id="add">注册节点</button>-->
             </div>
         </div>
     </div>
@@ -15,9 +15,9 @@
     <table class="layui-hide" id="table_list" lay-filter="table_filter">
     </table>
 
-    <script type="text/html" id="bar">
-        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="unregister">注销节点</a>
-    </script>
+    <!--<script type="text/html" id="bar">-->
+        <!--<a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="unregister">注销节点</a>-->
+    <!--</script>-->
 </div>
 
 <script>
@@ -39,7 +39,7 @@
             ,url: '/getNodes'
             ,cols: [[
                 {checkbox: true, fixed: true},
-                {field:'id', title: '节点ID', align:'center', sort: true}
+                {field:'node_id', title: '节点ID', align:'center', sort: true}
                 ,{field:'http_addr', title: 'http连接地址'}
                 ,{field:'tcp_addr',title: 'tcp连接地址'}
                 ,{field:'weight',title: '权重大小',edit:true}
@@ -55,8 +55,8 @@
               return {
                 "code": res.code, //解析接口状态
                 "msg": res.msg, //解析提示文本
-                "count": res.data.nodes.length, //解析数据长度
-                "data": res.data.nodes //解析数据列表
+                "count": res.data.length, //解析数据长度
+                "data": res.data //解析数据列表
               };
             }
 
@@ -102,7 +102,7 @@
                       success: function(out) {
                         if (out.code == 0) {
                             layer.msg("操作成功",{icon: 1,shade:0.3,time:1000},function () {
-                               window.location.reload();  
+                               window.location.reload();
                             })
                         } else {
                             layer.msg(out.msg,{icon: 5})
@@ -121,7 +121,7 @@
                 layer.msg('操作不存在')
             }
         });
-        
+
         // 监听单元格修改
         table.on('edit(table_filter)', function(obj){ //注：edit是固定事件名，test是table原始容器的属性 lay-filter="对应的值"
           $.ajax({
@@ -142,7 +142,7 @@
             }
           })
         });
-        
+
         $(".batch").on('click',function (obj) {
             var action = $(this).attr('data-type');
             var checkStatus = table.checkStatus('listReload');

@@ -15,8 +15,8 @@
                 <div class="demoTable">
                     <div class="layui-inline pp-search" style="text-align: left;">
                         <select name="addr" lay-verify="required" lay-filter="select_group" id="addr" lay-search="">
-                            {{range $k, $v := .data.nodes}}
-                            <option value="{{$v.http_addr}}">{{$v.http_addr}}</option>
+                            {{range $k, $v := .nodes}}
+                            <option value="{{$v.HttpAddr}}">{{$v.HttpAddr}}</option>
                             {{end}}
                         </select>
                     </div>
@@ -31,7 +31,7 @@
 
     <script type="text/html" id="bar">
         <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="autoAck">是|否</a>
-        <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="remove">删除</a>
+        <!--<a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="remove">删除</a>-->
     </script>
 </div>
 <script>
